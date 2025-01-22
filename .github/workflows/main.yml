@@ -6,7 +6,7 @@ on:
 
 jobs:
   run-script:
-    runs-on: ubuntu-latest  # Use 'ubuntu-latest' unless 'internal' is a custom runner you have configured
+    runs-on: ubuntu-latest  # Ensure this runner is available
     environment: dev
     steps:
       - name: Checkout
@@ -20,10 +20,11 @@ jobs:
           with open('cosmos_collection_manager.csv', 'r') as file:
               reader = csv.reader(file)
               firstrow = next(reader)
-              # Write the output to an environment file
-              with open('${{ GITHUB_ENV }}', 'a') as env_file:
+              # Write the output to the GITHUB_ENV file
+              with open('/tmp/envfile', 'a') as env_file:
                   env_file.write(f'csv_row={",".join(firstrow)}\\n')
           EOF
+          cat /tmp/envfile >> $GITHUB_ENV  # Append the environment file content to GITHUB_ENV
 
       - name: Access the Python output
         run: |
