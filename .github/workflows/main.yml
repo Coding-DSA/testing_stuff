@@ -1,0 +1,30 @@
+name: Read row from csv
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest  # Use 'ubuntu-latest' unless 'internal' is a custom runner you have configured
+    environment: dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read specific row from csv
+        id: read_csv_python
+        run: |
+          python - <<EOF
+          import csv
+          with open('cosmos_collection_manager.csv', 'r') as file:
+              reader = csv.reader(file)
+              firstrow = next(reader)
+              # Write the output to an environment file
+              with open('${{ GITHUB_ENV }}', 'a') as env_file:
+                  env_file.write(f'csv_row={",".join(firstrow)}\\n')
+          EOF
+
+      - name: Access the Python output
+        run: |
+          echo "csvrow from python: ${{ env.csv_row }}"
