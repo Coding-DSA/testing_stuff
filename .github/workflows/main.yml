@@ -17,7 +17,7 @@ jobs:
         run: |
           python - <<EOF
           import csv
-          with open('cosmos_collection_manager2.csv', 'r') as file:
+          with open('testing_stuff/cosmos_collection_manager2.csv', 'r') as file:
               reader = csv.reader(file)
               next(reader)  # Skip the first row (header)
               second_row = next(reader)  # Read the second row
