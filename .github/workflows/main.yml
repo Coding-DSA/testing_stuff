@@ -12,20 +12,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Read specific row from csv
+      - name: Read second column of second row from csv
         id: read_csv_python
         run: |
           python - <<EOF
           import csv
           with open('cosmos_collection_manager.csv', 'r') as file:
               reader = csv.reader(file)
-              firstrow = next(reader)
+              next(reader)  # Skip the first row (header)
+              second_row = next(reader)  # Read the second row
+              second_col_value = second_row[1]  # Extract the second column value
               # Write the output to the GITHUB_ENV file
               with open('/tmp/envfile', 'a') as env_file:
-                  env_file.write(f'csv_row={",".join(firstrow)}\\n')
+                  env_file.write(f'second_col_value={second_col_value}\\n')
           EOF
           cat /tmp/envfile >> $GITHUB_ENV  # Append the environment file content to GITHUB_ENV
 
       - name: Access the Python output
         run: |
-          echo "csvrow from python: ${{ env.csv_row }}"
+          echo "Value in the second column of the second row: ${{ env.second_col_value }}"
