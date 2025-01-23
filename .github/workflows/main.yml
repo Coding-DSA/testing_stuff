@@ -28,6 +28,24 @@ jobs:
           EOF
           cat /tmp/envfile >> $GITHUB_ENV  # Append the environment file content to GITHUB_ENV
 
+      - name: Read all columns from the second row of the CSV
+        id: read_all_csv_python
+        run: |
+          python - <<EOF
+          import csv
+          import os
+          file_path = 'cosmos_collection_manager.csv'
+          if not os.path.exists(file_path):
+              raise FileNotFoundError(f"File not found: {file_path}")
+          with open(file_path, 'r') as file:
+              reader = csv.DictReader(file)  # Use DictReader for column-based access
+              #next(reader)  # Skip the first row (header)
+              second_row = next(reader)  # Read the second row
+              # Write all columns to the GITHUB_ENV file
+              with open('/tmp/envfile', 'a') as env_file:
+                  for column_name, column_value in second_row.items():
+                      env_file.write(f'{column_name}={column_value}\\n')
+
       - name: Access the Python output
         run: |
           echo "Value in the second column of the second row: ${{ env.second_col_value }}"
