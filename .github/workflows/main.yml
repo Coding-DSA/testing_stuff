@@ -34,7 +34,7 @@ jobs:
           python - <<EOF
           import csv
           import os
-          file_path = 'cosmos_collection_manager.csv'
+          file_path = 'cosmos_collection_manager2.csv'
           if not os.path.exists(file_path):
               raise FileNotFoundError(f"File not found: {file_path}")
           with open(file_path, 'r') as file:
