@@ -36,7 +36,8 @@ with open("task_data.json", "w") as f:
           python3 generate_tasks.py
 
           # Save task_data.json content to the GitHub environment variable
-          echo "task_data=$(cat task_data.json)" >> $GITHUB_ENV
+          task_data=$(cat task_data.json)
+          echo "task_data=${task_data}" >> $GITHUB_ENV
 
       # Step 3: Process the Task Data
       - name: Process Task Data
