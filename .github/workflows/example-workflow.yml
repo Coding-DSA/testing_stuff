@@ -19,18 +19,14 @@ jobs:
         id: generate_data
         run: |
           # Create a Python script to generate tasks
-          echo '
-import json
-
-tasks = [
-    {"name": "Task1", "value": "Value1"},
-    {"name": "Task2", "value": "Value2"},
-    {"name": "Task3", "value": "Value3"}
-]
-
-with open("task_data.json", "w") as f:
-    json.dump(tasks, f)
-' > generate_tasks.py
+          echo "import json" > generate_tasks.py
+          echo "tasks = [" >> generate_tasks.py
+          echo "    {'name': 'Task1', 'value': 'Value1'}," >> generate_tasks.py
+          echo "    {'name': 'Task2', 'value': 'Value2'}," >> generate_tasks.py
+          echo "    {'name': 'Task3', 'value': 'Value3'}" >> generate_tasks.py
+          echo "]" >> generate_tasks.py
+          echo "with open('task_data.json', 'w') as f:" >> generate_tasks.py
+          echo "    json.dump(tasks, f)" >> generate_tasks.py
 
           # Run the Python script to generate task_data.json
           python3 generate_tasks.py
