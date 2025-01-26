@@ -1,0 +1,58 @@
+name: Example Workflow
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  process-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Step 2: Generate Task Data
+      - name: Generate Task Data
+        id: generate_data
+        run: |
+          # Create a Python script to generate tasks
+          echo '
+import json
+
+tasks = [
+    {"name": "Task1", "value": "Value1"},
+    {"name": "Task2", "value": "Value2"},
+    {"name": "Task3", "value": "Value3"}
+]
+
+with open("task_data.json", "w") as f:
+    json.dump(tasks, f)
+' > generate_tasks.py
+
+          # Run the Python script to generate task_data.json
+          python3 generate_tasks.py
+
+          # Save task_data.json content to the GitHub environment variable
+          echo "task_data=$(cat task_data.json)" >> $GITHUB_ENV
+
+      # Step 3: Process the Task Data
+      - name: Process Task Data
+        id: process_data
+        run: |
+          echo "Task data is: ${{ env.task_data }}"
+
+      # Step 4: Process Each Task (Optional)
+      - name: Process Each Task
+        if: success()
+        run: |
+          echo "${{ env.task_data }}" | jq -c '.[]' | while read task; do
+            # Extract task name and value
+            name=$(echo $task | jq -r '.name')
+            value=$(echo $task | jq -r '.value')
+
+            # Print task details
+            echo "Processing task $name with value $value"
+          done
