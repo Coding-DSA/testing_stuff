@@ -88,13 +88,19 @@ jobs:
       - name: Process task data
         run: |
           echo "Processing task data..."
-          if [ -n "${{ needs.run-script.outputs.task_data }}" ]; then
-            echo "${{ needs.run-script.outputs.task_data }}" | jq -c ".[]" | while IFS= read -r task; do
-              task_type="DatasourceName"  # Simulated task type
+          task_data='${{ env.task_data }}'
+          echo "Task data: $task_data"  # Debugging step
+
+          if [ "$task_data" != "[]" ]; then
+            echo "$task_data" | jq -c ".[]" | while IFS= read -r task; do
               environment=$(echo "$task" | jq -r ".Environment")
-              if [ "$task_type" == "DatasourceName" ]; then
-                echo "Simulated deployment of data source for environment: $environment"
-              fi
+              db_name=$(echo "$task" | jq -r ".DatabaseName")
+              description=$(echo "$task" | jq -r ".Description")
+
+              echo "Simulated deployment of data source:"
+              echo "- DatabaseName: $db_name"
+              echo "- Environment: $environment"
+              echo "- Description: $description"
             done
           else
             echo "No tasks to process."
