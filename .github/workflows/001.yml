@@ -50,11 +50,12 @@ jobs:
 
           echo "Filtered data: $filtered_data"
 
-          # Save filtered_data as an environment variable
+          # Save filtered_data as a string output
           echo "filtered_data=$filtered_data" >> $GITHUB_ENV
+          echo "::set-output name=filtered_data::$filtered_data"
 
     outputs:
-      filtered_data: ${{ env.filtered_data }}
+      filtered_data: ${{ steps.process_csv.outputs.filtered_data }}
 
   processed-data:
     needs: run-script
@@ -68,7 +69,7 @@ jobs:
       - name: Process filtered data
         run: |
           echo "Processing task data..."
-          task_data="${{ env.filtered_data }}"
+          task_data="${{ needs.run-script.outputs.filtered_data }}"
           echo "Task data: $task_data"
 
           if [[ "$task_data" != "[]" ]]; then
