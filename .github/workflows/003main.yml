@@ -1,0 +1,82 @@
+name: Test Read Row from CSV
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Step 2: Create Dummy CSV for Testing
+      - name: Create dummy CSV
+        run: |
+          mkdir -p PythonFolder
+          echo "DatabaseName,Environment,Description" > PythonFolder/azure_cosmos_db_onboarding.csv
+          echo "TestDB1,dev,First test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
+          echo "TestDB2,prod,Second test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
+          echo "TestDB3,test,Third test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
+
+      # Step 3: Read CSV and Process Data
+      - name: Process CSV and Filter Data
+        id: process_csv
+        run: |
+          # Simulated existing data sources
+          EXISTING_DATA_SOURCES='["TestDB2"]'
+
+          # Convert CSV to JSON array
+          csvjson=$(cat PythonFolder/azure_cosmos_db_onboarding.csv | awk 'NR > 1 {print}' | jq -Rn '
+            [inputs | split(",") | {
+              DatabaseName: .[0],
+              Environment: .[1],
+              Description: .[2]
+            }]')
+
+          echo "CSV as JSON: $csvjson"
+
+          # Filter out existing data sources
+          filtered_data=$(echo "$csvjson" | jq --argjson existing "$EXISTING_DATA_SOURCES" '
+            map(select(.DatabaseName as $db | $existing | index($db) | not))')
+
+          echo "Filtered data: $filtered_data"
+          echo "$filtered_data" > task_data.json
+          echo "filtered_data=$filtered_data" >> $GITHUB_ENV
+
+    outputs:
+      filtered_data: ${{ steps.process_csv.outputs.filtered_data }}
+
+  processed-data:
+    needs: run-script
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Step 2: Access and Process Filtered Data
+      - name: Process filtered data
+        run: |
+          echo "Processing task data..."
+          task_data="${{ env.filtered_data }}"
+          echo "Task data: $task_data"
+
+          if [ "$task_data" != "[]" ]; then
+            echo "$task_data" | jq -c ".[]" | while IFS= read -r task; do
+              # Extract task details
+              db_name=$(echo "$task" | jq -r ".DatabaseName")
+              environment=$(echo "$task" | jq -r ".Environment")
+              description=$(echo "$task" | jq -r ".Description")
+
+              # Simulated task execution
+              echo "Simulated deployment of data source:"
+              echo "- DatabaseName: $db_name"
+              echo "- Environment: $environment"
+              echo "- Description: $description"
+            done
+          else
+            echo "No tasks to process."
+          fi
