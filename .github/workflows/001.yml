@@ -33,7 +33,7 @@ jobs:
           # Save filtered_data as an environment variable
           echo "filtered_data=$filtered_data" >> $GITHUB_ENV
 
-        outputs:
+          outputs:
           filtered_data: ${{ env.filtered_data }}
 
   processed-data:
