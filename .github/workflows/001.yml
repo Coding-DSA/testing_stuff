@@ -7,12 +7,12 @@ on:
 jobs:
   run-script:
     runs-on: ubuntu-latest
-    outputs:
-      filtered_data: ${{ steps.process_csv.outputs.filtered_data }} 
     steps:
+      # Step 1: Checkout
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Step 2: Create Dummy CSV for Testing
       - name: Create dummy CSV
         run: |
           mkdir -p PythonFolder
@@ -21,40 +21,69 @@ jobs:
           echo "TestDB2,prod,Second test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
           echo "TestDB3,test,Third test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
 
+      # Step 3: Read CSV and Filter Data
       - name: Process CSV and Filter Data
         id: process_csv
         run: |
-          # Create an array of existing databases
-          existing_databases=("TestDB2")
+          # Simulated existing data sources as a Python list
+          EXISTING_DATA_SOURCES="['TestDB2']"
 
-          # Use awk to filter the CSV data
-          filtered_data=$(awk -F',' 'NR>1 && !($1 in existing_databases) {print $0}' PythonFolder/azure_cosmos_db_onboarding.csv)
+          # Initialize an empty filtered data list
+          filtered_data="["
+
+          # Read the CSV and filter data
+          while IFS=',' read -r db_name environment description; do
+            # Skip header row
+            if [ "$db_name" = "DatabaseName" ]; then
+              continue
+            fi
+
+            # Check if DatabaseName is not in EXISTING_DATA_SOURCES
+            if [[ $EXISTING_DATA_SOURCES != *"'$db_name'"* ]]; then
+              # Append the row as a Python-style list
+              filtered_data="${filtered_data}['$db_name','$environment','$description'],"
+            fi
+          done < PythonFolder/azure_cosmos_db_onboarding.csv
+
+          # Remove trailing comma and close the list
+          filtered_data="${filtered_data%,}]"
+
+          echo "Filtered data: $filtered_data"
 
           # Save filtered_data as an environment variable
           echo "filtered_data=$filtered_data" >> $GITHUB_ENV
 
-outputs:
-filtered_data: ${{ env.filtered_data }}
+    outputs:
+      filtered_data: ${{ env.filtered_data }}
 
   processed-data:
     needs: run-script
     runs-on: ubuntu-latest
     steps:
+      # Step 1: Checkout
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Step 2: Access and Process Filtered Data
       - name: Process filtered data
         run: |
           echo "Processing task data..."
-          task_data="${{ needs.run-script.outputs.filtered_data }}" 
+          task_data="${{ env.filtered_data }}"
+          echo "Task data: $task_data"
 
-          if [[ -n "$task_data" ]]; then
-            while IFS=',' read -r db_name environment description; do
+          if [[ "$task_data" != "[]" ]]; then
+            # Iterate through each item in the Python-style list
+            echo "$task_data" | sed -E "s/\],\[/\n/g" | sed -E "s/\[|\]//g" | while IFS=',' read -r db_name environment description; do
+              # Trim any extra quotes or spaces
+              db_name=$(echo "$db_name" | tr -d " '")
+              environment=$(echo "$environment" | tr -d " '")
+              description=$(echo "$description" | tr -d " '")
+
               echo "Simulated deployment of data source:"
               echo "- DatabaseName: $db_name"
               echo "- Environment: $environment"
               echo "- Description: $description"
-            done <<< "$task_data"
+            done
           else
             echo "No tasks to process."
           fi
