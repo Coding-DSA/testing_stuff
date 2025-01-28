@@ -86,7 +86,7 @@ jobs:
             ]
 
           # Filter the data by checking if DatabaseName exists in EXISTING_DATA_SOURCES
-          filtered_data=$(echo "$raw_data" | python3 -c "
+          filtered_data=$(echo "$raw_data" | python3 <<EOF
           import sys, json
 
           # Load the raw JSON data
@@ -102,6 +102,7 @@ jobs:
 
           # Output the filtered data as JSON
           print(json.dumps(filtered_data))
+          EOF
             ")
 
           echo "Filtered data: $filtered_data"
