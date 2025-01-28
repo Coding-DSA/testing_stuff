@@ -7,6 +7,8 @@ on:
 jobs:
   run-script:
     runs-on: ubuntu-latest
+    outputs:
+      filtered_data: ${{ steps.process_csv.outputs.filtered_data }} 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,7 +46,7 @@ jobs:
       - name: Process filtered data
         run: |
           echo "Processing task data..."
-          task_data="${{ env.filtered_data }}"
+          task_data="${{ needs.run-script.outputs.filtered_data }}" 
 
           if [[ -n "$task_data" ]]; then
             while IFS=',' read -r db_name environment description; do
