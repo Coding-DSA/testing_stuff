@@ -1,0 +1,80 @@
+name: Test Read Row from CSV
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Step 2: Create Dummy CSV for Testing
+      - name: Create dummy CSV
+        run: |
+          mkdir -p PythonFolder
+          echo "DatabaseName,Environment,Description" > PythonFolder/azure_cosmos_db_onboarding.csv
+          echo "TestDB1,dev,First test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
+          echo "TestDB2,prod,Second test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
+          echo "TestDB3,test,Third test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
+
+      # Step 3: Read CSV and Filter Data
+      - name: Process CSV and Filter Data
+        id: process_csv
+        run: |
+          # Simulated existing data sources
+          EXISTING_DATA_SOURCES="['TestDB2']"
+
+          # Convert CSV to Python-style list
+          filtered_data=$(cat PythonFolder/azure_cosmos_db_onboarding.csv | awk 'NR > 1 {print}' | \
+            while IFS=',' read -r db_name environment description; do
+              if [[ $EXISTING_DATA_SOURCES != *"'$db_name'"* ]]; then
+                echo "['$db_name','$environment','$description']"
+              fi
+            done | tr '\n' ',')
+
+          # Format filtered_data as a Python list
+          filtered_data="[${filtered_data%,}]"
+
+          echo "Filtered data: $filtered_data"
+
+          # Save filtered_data to environment variable
+          echo "filtered_data=$filtered_data" >> $GITHUB_ENV
+
+    outputs:
+      filtered_data: ${{ steps.process_csv.outputs.filtered_data }}
+
+  processed-data:
+    needs: run-script
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Step 2: Access and Process Filtered Data
+      - name: Process filtered data
+        run: |
+          echo "Processing task data..."
+          task_data="${{ env.filtered_data }}"
+          echo "Task data: $task_data"
+
+          if [[ "$task_data" != "[]" ]]; then
+            # Process each list item
+            echo "$task_data" | tr -d '[]' | tr ',' '\n' | while IFS=',' read -r item; do
+              # Parse the Python list elements
+              db_name=$(echo "$item" | awk -F',' '{print $1}' | tr -d " '")
+              environment=$(echo "$item" | awk -F',' '{print $2}' | tr -d " '")
+              description=$(echo "$item" | awk -F',' '{print $3}' | tr -d " '")
+
+              echo "Simulated deployment of data source:"
+              echo "- DatabaseName: $db_name"
+              echo "- Environment: $environment"
+              echo "- Description: $description"
+            done
+          else
+            echo "No tasks to process."
+          fi
