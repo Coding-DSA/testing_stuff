@@ -1,0 +1,92 @@
+name: Test Read Row from CSV
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      # Step 4: Create Dummy CSV for Testing
+      - name: Create dummy CSV
+        run: |
+          mkdir -p PythonFolder
+          echo "DatabaseName,Environment,Description" > PythonFolder/azure_cosmos_db_onboarding.csv
+          echo "TestDB1,dev,First test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
+          echo "TestDB2,prod,Second test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
+          echo "TestDB3,test,Third test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
+
+      # Step 5: Mock Read Parameter File and Process Data Sources
+      - name: Read Parameter File and Process Data Sources
+        id: read_csv_python
+        run: |
+          python - <<EOF
+          import csv
+          import json
+
+          # Step 5.1: Simulate reading CSV file
+          file_path = 'PythonFolder/azure_cosmos_db_onboarding.csv'
+          with open(file_path, 'r') as file:
+              reader = csv.DictReader(file)
+              rows = list(reader)
+
+          # Step 5.2: Simulate existing data sources in Purview
+          existing_data_sources = {"TestDB2"}  # Simulated existing data sources
+
+          # Step 5.3: Filter new data sources
+          filterdata = [row for row in rows if row["DatabaseName"] not in existing_data_sources]
+          if not filterdata:
+              print("No new data sources to onboard")
+          else:
+              print(f"New data sources to onboard: {filterdata}")
+
+          # Step 5.4: Write filtered data to JSON
+          with open("task_data.json", "w") as f:
+              json.dump(filterdata, f)
+          EOF
+
+      # Step 6: Export processed data
+      - name: Export task data
+        run: |
+          echo "task_data=$(cat task_data.json)" >> $GITHUB_ENV
+          cat task_data.json  # Print task data for debugging
+
+    outputs:
+      task_data: ${{ steps.read_csv_python.outputs.task_data }}
+
+  processed-data:
+    needs: run-script
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Step 2: Process task data
+      - name: Process task data
+        run: |
+          echo "Processing task data..."
+          echo "${{ needs.run-script.outputs.task_data }}" | jq -c ".[]" | while IFS= read -r task; do
+            task_type="DatasourceName"  # Simulated task type
+            environment=$(echo "$task" | jq -r ".Environment")
+            if [ "$task_type" == "DatasourceName" ]; then
+              echo "Simulated deployment of data source for environment: $environment"
+            fi
+          done
