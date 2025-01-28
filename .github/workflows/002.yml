@@ -21,7 +21,7 @@ jobs:
           echo "TestDB2,prod,Second test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
           echo "TestDB3,test,Third test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
 
-            # Step 3: Read CSV and Filter Data
+      # Step 3: Read CSV and Filter Data
       - name: Process CSV and Filter Data
         id: process_csv
         run: |
@@ -29,84 +29,73 @@ jobs:
           EXISTING_DATA_SOURCES="['set-ig-dev-cosmosdb2']"
 
           # Simulate the JSON data (filtered data)
-          raw_data: |
-            [
-              {
-                "id": "2",
-                "DatasourceName": "IGCosmosDataSource2",
-                "DatabaseName": "set-ig-dev-cosmosdb2",
-                "Kind": "AzureCosmosDB",
-                "Endpoint": "https://set-ig-dev-cosmosdb.documents.azure.com:443/",
-                "PurviewEndpoint": "https://purview-jm-dev-datagovernance-a.purview.azure.com/",
-                "ResourceGroup": "rg-set-dev-purview-a",
-                "Location": "eastus",
-                "ResourceName": "set-ig-dev-cosmosdb",
-                "CollectionReferenceName": "u04ujl",
-                "InstanceName": "purview-jm-dev-datagovernance-a",
-                "CollectionType": "CollectionReference",
-                "GroupId": "sql",
-                "ScanName": "scan-IG-cosmos",
-                "ScanRulesetName": "JMF-CosmosDB-RuleSet",
-                "IntegrationRuntimeName": "IntegrationRuntime-V2MVN",
-                "PurviewAccountName": "purview-jm-dev-datagovernance-a",
-                "EnableLineage": "false",
-                "KeyVaultName": "kv-set-ig-purview",
-                "KeyVaultSecretName": "IGCosmosDBConnectionString",
-                "AccountUri": "https://set-ig-dev-cosmosdb.documents.azure.com:443/",
-                "CredentialName": "cosmos-set-ig-dev-sharedservices",
-                "KeyVaultConnectionName": "kv-set-ig-purview",
-                "KeyvaultURL": "https://kv-set-ig-purview.vault.azure.net/"
-              },
-              {
-                "id": "4",
-                "DatasourceName": "IGCosmosDataSource4",
-                "DatabaseName": "set-ig-dev-cosmosdb3",
-                "Kind": "AzureCosmosDB",
-                "Endpoint": "https://set-ig-dev-cosmosdb.documents.azure.com:443/",
-                "PurviewEndpoint": "https://purview-jm-dev-datagovernance-a.purview.azure.com/",
-                "ResourceGroup": "rg-set-dev-purview-a",
-                "Location": "eastus",
-                "ResourceName": "set-ig-dev-cosmosdb",
-                "CollectionReferenceName": "u04ujl",
-                "InstanceName": "purview-jm-dev-datagovernance-a",
-                "CollectionType": "CollectionReference",
-                "GroupId": "sql",
-                "ScanName": "scan-IG-cosmos",
-                "ScanRulesetName": "JMF-CosmosDB-RuleSet",
-                "IntegrationRuntimeName": "IntegrationRuntime-V2MVN",
-                "PurviewAccountName": "purview-jm-dev-datagovernance-a",
-                "EnableLineage": "false",
-                "KeyVaultName": "kv-set-ig-purview",
-                "KeyVaultSecretName": "IGCosmosDBConnectionString",
-                "AccountUri": "https://set-ig-dev-cosmosdb.documents.azure.com:443/",
-                "CredentialName": "cosmos-set-ig-dev-sharedservices",
-                "KeyVaultConnectionName": "kv-set-ig-purview",
-                "KeyvaultURL": "https://kv-set-ig-purview.vault.azure.net/"
-              }
-            ]
+          raw_data='[
+            {"id": "2", "DatasourceName": "IGCosmosDataSource2", "DatabaseName": "set-ig-dev-cosmosdb2", "Kind": "AzureCosmosDB", "Endpoint": "https://set-ig-dev-cosmosdb.documents.azure.com:443/", "PurviewEndpoint": "https://purview-jm-dev-datagovernance-a.purview.azure.com/", "ResourceGroup": "rg-set-dev-purview-a", "Location": "eastus", "ResourceName": "set-ig-dev-cosmosdb", "CollectionReferenceName": "u04ujl", "InstanceName": "purview-jm-dev-datagovernance-a", "CollectionType": "CollectionReference", "GroupId": "sql", "ScanName": "scan-IG-cosmos", "ScanRulesetName": "JMF-CosmosDB-RuleSet", "IntegrationRuntimeName": "IntegrationRuntime-V2MVN", "PurviewAccountName": "purview-jm-dev-datagovernance-a", "EnableLineage": "false", "KeyVaultName": "kv-set-ig-purview", "KeyVaultSecretName": "IGCosmosDBConnectionString", "AccountUri": "https://set-ig-dev-cosmosdb.documents.azure.com:443/", "CredentialName": "cosmos-set-ig-dev-sharedservices", "KeyVaultConnectionName": "kv-set-ig-purview", "KeyvaultURL": "https://kv-set-ig-purview.vault.azure.net/"},
+            {"id": "4", "DatasourceName": "IGCosmosDataSource4", "DatabaseName": "set-ig-dev-cosmosdb3", "Kind": "AzureCosmosDB", "Endpoint": "https://set-ig-dev-cosmosdb.documents.azure.com:443/", "PurviewEndpoint": "https://purview-jm-dev-datagovernance-a.purview.azure.com/", "ResourceGroup": "rg-set-dev-purview-a", "Location": "eastus", "ResourceName": "set-ig-dev-cosmosdb", "CollectionReferenceName": "u04ujl", "InstanceName": "purview-jm-dev-datagovernance-a", "CollectionType": "CollectionReference", "GroupId": "sql", "ScanName": "scan-IG-cosmos", "ScanRulesetName": "JMF-CosmosDB-RuleSet", "IntegrationRuntimeName": "IntegrationRuntime-V2MVN", "PurviewAccountName": "purview-jm-dev-datagovernance-a", "EnableLineage": "false", "KeyVaultName": "kv-set-ig-purview", "KeyVaultSecretName": "IGCosmosDBConnectionString", "AccountUri": "https://set-ig-dev-cosmosdb.documents.azure.com:443/", "CredentialName": "cosmos-set-ig-dev-sharedservices", "KeyVaultConnectionName": "kv-set-ig-purview", "KeyvaultURL": "https://kv-set-ig-purview.vault.azure.net/"}
+          ]'
 
           # Filter the data by checking if DatabaseName exists in EXISTING_DATA_SOURCES
           filtered_data=$(echo "$raw_data" | python3 <<EOF
-          import sys, json
+import sys, json
 
-          # Load the raw JSON data
-          raw_data = json.loads(sys.stdin.read())
+# Load the raw JSON data
+raw_data = json.loads(sys.stdin.read())
 
-          # Simulated existing data sources
-          existing_data_sources = ['set-ig-dev-cosmosdb2']
+# Simulated existing data sources
+existing_data_sources = ['set-ig-dev-cosmosdb2']
 
-          # Filter the data
-          filtered_data = [
-            item for item in raw_data if item['DatabaseName'] not in existing_data_sources
-          ]
+# Filter the data
+filtered_data = [
+    item for item in raw_data if item['DatabaseName'] not in existing_data_sources
+]
 
-          # Output the filtered data as JSON
-          print(json.dumps(filtered_data))
-          EOF
-            ")
+# Output the filtered data as JSON
+print(json.dumps(filtered_data))
+EOF
+          )
 
           echo "Filtered data: $filtered_data"
 
           # Save filtered_data as a string output
           echo "filtered_data=$filtered_data" >> $GITHUB_ENV
           echo "::set-output name=filtered_data::$filtered_data"
+
+    outputs:
+      filtered_data: ${{ steps.process_csv.outputs.filtered_data }}
+
+  processed-data:
+    needs: run-script
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Step 2: Access and Process Filtered Data
+      - name: Process filtered data
+        run: |
+          echo "Processing task data..."
+          task_data='${{ needs.run-script.outputs.filtered_data }}'
+          echo "Task data: $task_data"
+
+          if [[ "$task_data" != "[]" ]]; then
+            # Parse and process each JSON object
+            echo "$task_data" | python3 <<EOF
+import sys, json
+
+# Load the task data
+filtered_data = json.loads(sys.stdin.read())
+
+# Process each item in the filtered data
+for item in filtered_data:
+    print(f"Simulated deployment of data source:")
+    print(f"- ID: {item['id']}")
+    print(f"- DatasourceName: {item['DatasourceName']}")
+    print(f"- DatabaseName: {item['DatabaseName']}")
+    print(f"- ResourceGroup: {item['ResourceGroup']}")
+    print(f"- Endpoint: {item['Endpoint']}")
+    print(f"- Location: {item['Location']}")
+EOF
+          else
+            echo "No tasks to process."
+          fi
