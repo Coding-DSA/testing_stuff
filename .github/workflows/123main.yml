@@ -1,0 +1,113 @@
+name: Test Read Row from CSV
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      # Step 4: Create Dummy CSV for Testing
+      - name: Create dummy CSV
+        run: |
+          mkdir -p PythonFolder
+          echo "DatabaseName,Environment,Description" > PythonFolder/azure_cosmos_db_onboarding.csv
+          echo "TestDB1,dev,First test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
+          echo "TestDB2,prod,Second test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
+          echo "TestDB3,test,Third test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
+
+      # Step 5: Read Parameter File and Process Data Sources
+      - name: Read Parameter File and Process Data Sources
+        id: read_csv_python
+        run: |
+          python - <<EOF
+          import csv
+          import json
+
+          # Read CSV file
+          file_path = 'PythonFolder/azure_cosmos_db_onboarding.csv'
+          with open(file_path, 'r') as file:
+              reader = csv.DictReader(file)
+              rows = list(reader)
+
+          # Simulate existing data sources
+          existing_data_sources = {"TestDB2"}  # Simulated existing data sources
+
+          # Filter new data sources
+          filterdata = [row for row in rows if row["DatabaseName"] not in existing_data_sources]
+
+          # Debug: Print the filtered data
+          print("Filtered data:", filterdata)
+
+          # Write filtered data to JSON
+          with open("task_data.json", "w") as f:
+              json.dump(filterdata, f)
+          EOF
+
+      # Step 6: Export processed data
+      - name: Export task data
+        run: |
+          if [ -s task_data.json ]; then
+            echo "task_data=$(cat task_data.json)" >> $GITHUB_ENV
+            echo "::set-output name=task_data::$(cat task_data.json)"
+          else
+            echo "task_data=[]" >> $GITHUB_ENV
+            echo "::set-output name=task_data::[]"
+            echo "No tasks to process."
+          fi
+
+    outputs:
+      task_data: ${{ steps.read_csv_python.outputs.task_data }}
+
+  processed-data:
+    needs: run-script
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Step 2: Debug task data
+      - name: Debug task data
+        run: |
+          echo "Raw task_data: ${{ needs.run-script.outputs.task_data }}"
+
+      # Step 3: Process task data
+      - name: Process task data
+        run: |
+          task_data='${{ needs.run-script.outputs.task_data }}'
+          echo "Processing task data: $task_data"
+
+          if [ "$task_data" != "[]" ]; then
+            echo "$task_data" | jq -c ".[]" | while IFS= read -r task; do
+              # Extract task details
+              db_name=$(echo "$task" | jq -r ".DatabaseName")
+              environment=$(echo "$task" | jq -r ".Environment")
+              description=$(echo "$task" | jq -r ".Description")
+
+              # Simulated task execution
+              echo "Simulated deployment of data source:"
+              echo "- DatabaseName: $db_name"
+              echo "- Environment: $environment"
+              echo "- Description: $description"
+            done
+          else
+            echo "No tasks to process."
+          fi
