@@ -87,22 +87,22 @@ jobs:
 
           # Filter the data by checking if DatabaseName exists in EXISTING_DATA_SOURCES
           filtered_data=$(echo "$raw_data" | python3 -c "
-import sys, json
+          import sys, json
 
-# Load the raw JSON data
-raw_data = json.loads(sys.stdin.read())
+          # Load the raw JSON data
+          raw_data = json.loads(sys.stdin.read())
 
-# Simulated existing data sources
-existing_data_sources = ['set-ig-dev-cosmosdb2']
+          # Simulated existing data sources
+          existing_data_sources = ['set-ig-dev-cosmosdb2']
 
-# Filter the data
-filtered_data = [
-    item for item in raw_data if item['DatabaseName'] not in existing_data_sources
-]
+          # Filter the data
+          filtered_data = [
+            item for item in raw_data if item['DatabaseName'] not in existing_data_sources
+          ]
 
-# Output the filtered data as JSON
-print(json.dumps(filtered_data))
-")
+          # Output the filtered data as JSON
+          print(json.dumps(filtered_data))
+            ")
 
           echo "Filtered data: $filtered_data"
 
