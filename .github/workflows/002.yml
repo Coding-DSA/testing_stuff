@@ -92,21 +92,26 @@ jobs:
           if [[ "$task_data" != "[]" ]]; then
             # Parse and process each JSON object
             echo "$task_data" | python3 <<EOF
-import sys, json
 
-# Load the task data
-filtered_data = json.loads(sys.stdin.read())
+          import sys, json
 
-# Process each item in the filtered data
-for item in filtered_data:
-    print(f"Simulated deployment of data source:")
-    print(f"- ID: {item['id']}")
-    print(f"- DatasourceName: {item['DatasourceName']}")
-    print(f"- DatabaseName: {item['DatabaseName']}")
-    print(f"- ResourceGroup: {item['ResourceGroup']}")
-    print(f"- Endpoint: {item['Endpoint']}")
-    print(f"- Location: {item['Location']}")
-EOF
+
+          # Load the task data
+
+          filtered_data = json.loads(sys.stdin.read())
+
+
+          # Process each item in the filtered data
+
+          for item in filtered_data:
+              print(f"Simulated deployment of data source:")
+              print(f"- ID: {item['id']}")
+              print(f"- DatasourceName: {item['DatasourceName']}")
+              print(f"- DatabaseName: {item['DatabaseName']}")
+              print(f"- ResourceGroup: {item['ResourceGroup']}")
+              print(f"- Endpoint: {item['Endpoint']}")
+              print(f"- Location: {item['Location']}")
+          EOF
           else
             echo "No tasks to process."
           fi
