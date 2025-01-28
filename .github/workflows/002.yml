@@ -1,4 +1,27 @@
-      # Step 3: Read CSV and Filter Data
+name: Test Read Row from CSV
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Step 2: Create Dummy CSV for Testing
+      - name: Create dummy CSV
+        run: |
+          mkdir -p PythonFolder
+          echo "DatabaseName,Environment,Description" > PythonFolder/azure_cosmos_db_onboarding.csv
+          echo "TestDB1,dev,First test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
+          echo "TestDB2,prod,Second test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
+          echo "TestDB3,test,Third test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
+
+            # Step 3: Read CSV and Filter Data
       - name: Process CSV and Filter Data
         id: process_csv
         run: |
