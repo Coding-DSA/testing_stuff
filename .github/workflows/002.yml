@@ -11,7 +11,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Verify Files After Checkout
-        run: ls -R  # Debugging: Ensure PythonFolder and CSV exist
+        run: ls -R  # Debugging step to verify file existence
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -39,21 +39,33 @@ jobs:
 
           file_path = "PythonFolder/azure_cosmos_db_onboarding.csv"
           if not os.path.exists(file_path):
-              raise FileNotFoundError(f"File not found: {file_path}")
+              print(f"Error: CSV file not found at {file_path}")
+              exit(1)
 
           with open(file_path, "r") as file:
               reader = csv.DictReader(file)
               data_rows = list(reader)
 
+          if not data_rows:
+              print("Error: CSV file is empty")
+              exit(1)
+
           # Simulating filtering of new data sources
           filtered_data = [row for row in data_rows if row["DatabaseName"] not in ["ExistingDB1", "ExistingDB2"]]
 
-          # Save filtered data to a JSON file
           with open("filtered_data.json", "w") as f:
               json.dump(filtered_data, f, indent=4)
 
-          print("Filtered Data Saved to filtered_data.json")
+          print(f"Filtered Data Saved: {len(filtered_data)} entries")
           EOF
+
+      - name: Verify JSON Output
+        run: |
+          if [ ! -s "filtered_data.json" ]; then
+            echo "Error: JSON output file is empty!"
+            exit 1
+          fi
+          cat filtered_data.json  # Print contents for debugging
 
       - name: Upload Filtered Data as Artifact
         uses: actions/upload-artifact@v4
@@ -73,29 +85,31 @@ jobs:
         with:
           name: filtered-data
 
-      - name: Process Filtered Data
+      - name: Verify Downloaded JSON
         run: |
-          echo "Processing task data..."
-          
-          if [ ! -f "filtered_data.json" ]; then
-            echo "Error: Filtered data file not found!"
+          if [ ! -s "filtered_data.json" ]; then
+            echo "Error: JSON file is empty or missing!"
             exit 1
           fi
+          cat filtered_data.json  # Debugging
 
-          cat filtered_data.json | python - <<EOF
-          import sys, json
+      - name: Process Filtered Data
+        run: |
+          python - <<EOF
+          import json
 
           try:
-              decoded_json = json.load(sys.stdin)
+              with open("filtered_data.json", "r") as f:
+                  filtered_data = json.load(f)
           except Exception as e:
               print(f"JSON decoding error: {e}")
-              sys.exit(1)
+              exit(1)
 
-          if not decoded_json:
+          if not filtered_data:
               print("No new data sources found.")
-              sys.exit(0)
+              exit(0)
 
-          for item in decoded_json:
+          for item in filtered_data:
               print("Deploying data source:")
               for key, value in item.items():
                   print(f"- {key}: {value}")
