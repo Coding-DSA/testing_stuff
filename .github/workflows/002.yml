@@ -1,117 +1,98 @@
-name: Test Read Row from CSV
-
 on:
   push:
   workflow_dispatch:
 
 jobs:
   run-script:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Ensure the correct runner
+    environment: dev
     steps:
-      # Step 1: Checkout
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Step 2: Create Dummy CSV for Testing
-      - name: Create dummy CSV
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install Dependencies
         run: |
-          mkdir -p PythonFolder
-          echo "DatabaseName,Environment,Description" > PythonFolder/azure_cosmos_db_onboarding.csv
-          echo "TestDB1,dev,First test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
-          echo "TestDB2,prod,Second test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
-          echo "TestDB3,test,Third test database" >> PythonFolder/azure_cosmos_db_onboarding.csv
+          python -m pip install --upgrade pip
+          pip install requests azure-identity azure-mgmt-purview azure-mgmt-resource azure-purview-catalog
 
-      # Step 3: Read CSV and Filter Data
-      - name: Process CSV and Filter Data
-        id: process_csv
+      - name: Set Dynamic Variables
         run: |
-          # Simulated existing data sources as a Python list
-          EXISTING_DATA_SOURCES="['set-ig-dev-cosmosdb2']"
+          echo "AZURE_TENANT_ID=${{ vars.AZURE_TENANT_ID }}" >> $GITHUB_ENV
+          echo "AZURE_CLIENT_ID=${{ vars.AZURE_CLIENT_ID }}" >> $GITHUB_ENV
+          echo "AZURE_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }}" >> $GITHUB_ENV
 
-          # Simulate the JSON data (filtered data)
-          raw_data='[
-            {"id": "2", "DatasourceName": "IGCosmosDataSource2", "DatabaseName": "set-ig-dev-cosmosdb2", "Kind": "AzureCosmosDB", "Endpoint": "https://set-ig-dev-cosmosdb.documents.azure.com:443/", "PurviewEndpoint": "https://purview-jm-dev-datagovernance-a.purview.azure.com/", "ResourceGroup": "rg-set-dev-purview-a", "Location": "eastus", "ResourceName": "set-ig-dev-cosmosdb", "CollectionReferenceName": "u04ujl", "InstanceName": "purview-jm-dev-datagovernance-a", "CollectionType": "CollectionReference", "GroupId": "sql", "ScanName": "scan-IG-cosmos", "ScanRulesetName": "JMF-CosmosDB-RuleSet", "IntegrationRuntimeName": "IntegrationRuntime-V2MVN", "PurviewAccountName": "purview-jm-dev-datagovernance-a", "EnableLineage": "false", "KeyVaultName": "kv-set-ig-purview", "KeyVaultSecretName": "IGCosmosDBConnectionString", "AccountUri": "https://set-ig-dev-cosmosdb.documents.azure.com:443/", "CredentialName": "cosmos-set-ig-dev-sharedservices", "KeyVaultConnectionName": "kv-set-ig-purview", "KeyvaultURL": "https://kv-set-ig-purview.vault.azure.net/"},
-            {"id": "4", "DatasourceName": "IGCosmosDataSource4", "DatabaseName": "set-ig-dev-cosmosdb3", "Kind": "AzureCosmosDB", "Endpoint": "https://set-ig-dev-cosmosdb.documents.azure.com:443/", "PurviewEndpoint": "https://purview-jm-dev-datagovernance-a.purview.azure.com/", "ResourceGroup": "rg-set-dev-purview-a", "Location": "eastus", "ResourceName": "set-ig-dev-cosmosdb", "CollectionReferenceName": "u04ujl", "InstanceName": "purview-jm-dev-datagovernance-a", "CollectionType": "CollectionReference", "GroupId": "sql", "ScanName": "scan-IG-cosmos", "ScanRulesetName": "JMF-CosmosDB-RuleSet", "IntegrationRuntimeName": "IntegrationRuntime-V2MVN", "PurviewAccountName": "purview-jm-dev-datagovernance-a", "EnableLineage": "false", "KeyVaultName": "kv-set-ig-purview", "KeyVaultSecretName": "IGCosmosDBConnectionString", "AccountUri": "https://set-ig-dev-cosmosdb.documents.azure.com:443/", "CredentialName": "cosmos-set-ig-dev-sharedservices", "KeyVaultConnectionName": "kv-set-ig-purview", "KeyvaultURL": "https://kv-set-ig-purview.vault.azure.net/"}
-          ]'
+      - name: Read Parameter File and Onboard New Data Sources
+        id: read_csv_python
+        run: |
+          python - <<EOF
+          import csv, os, json
+          from base64 import b64encode
 
-          # Filter the data by checking if DatabaseName exists in EXISTING_DATA_SOURCES
-          filtered_data=$(echo "$raw_data" | python3 <<EOF
-          import sys, json
+          file_path = "PythonFolder/azure_cosmos_db_onboarding.csv"
+          if not os.path.exists(file_path):
+              raise FileNotFoundError(f"File not found: {file_path}")
 
+          with open(file_path, "r") as file:
+              reader = csv.DictReader(file)
+              data_rows = list(reader)
 
-          # Load the raw JSON data
+          # Simulating filtering of new data sources
+          filtered_data = [row for row in data_rows if row["DatabaseName"] not in ["ExistingDB1", "ExistingDB2"]]
 
-          raw_data = json.loads(sys.stdin.read())
+          # Convert JSON to Base64 to safely pass between jobs
+          json_data = json.dumps(filtered_data)
+          b64_json = b64encode(json_data.encode()).decode()
 
+          with open("task_data.json", "w") as f:
+              f.write(b64_json)
 
-          # Simulated existing data sources
-
-          existing_data_sources = ['set-ig-dev-cosmosdb2']
-
-
-          # Filter the data
-
-          filtered_data = [
-    
-          item for item in raw_data if item['DatabaseName'] not in existing_data_sources
-
-          ]
-
-
-          # Output the filtered data as JSON
-
-          print(json.dumps(filtered_data))
-
+          print(b64_json)  # Print for debugging
           EOF
-          )
 
-          echo "Filtered data: $filtered_data"
-
-          # Save filtered_data as a string output
-          echo "filtered_data=$filtered_data" >> $GITHUB_ENV
-          echo "::set-output name=filtered_data::$filtered_data"
+          echo "filtered_data=$(cat task_data.json)" >> $GITHUB_ENV
 
     outputs:
-      filtered_data: ${{ steps.process_csv.outputs.filtered_data }}
+      filtered_data: ${{ env.filtered_data }}
 
   processed-data:
     needs: run-script
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Checkout
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Step 2: Access and Process Filtered Data
-      - name: Process filtered data
+      - name: Process Filtered Data
         run: |
           echo "Processing task data..."
-          task_data='${{ needs.run-script.outputs.filtered_data }}'
-          echo "Task data: $task_data"
+          task_data="${{ needs.run-script.outputs.filtered_data }}"
 
-          if [[ "$task_data" != "[]" ]]; then
-            # Parse and process each JSON object
-            echo "$task_data" | python3 <<EOF
-
-          import sys, json
-
-
-          # Load the task data
-
-          filtered_data = json.loads(sys.stdin.read())
-
-
-          # Process each item in the filtered data
-
-          for item in filtered_data:
-              print(f"Simulated deployment of data source:")
-              print(f"- ID: {item['id']}")
-              print(f"- DatasourceName: {item['DatasourceName']}")
-              print(f"- DatabaseName: {item['DatabaseName']}")
-              print(f"- ResourceGroup: {item['ResourceGroup']}")
-              print(f"- Endpoint: {item['Endpoint']}")
-              print(f"- Location: {item['Location']}")
-          EOF
-          else
-            echo "No tasks to process."
+          if [[ -z "$task_data" ]]; then
+            echo "Error: No data received!"
+            exit 1
           fi
+
+          echo "$task_data" | python - <<EOF
+          import sys, json
+          from base64 import b64decode
+
+          encoded_data = sys.stdin.read().strip()
+          if not encoded_data:
+              print("Error: Received empty data")
+              sys.exit(1)
+
+          try:
+              decoded_json = json.loads(b64decode(encoded_data).decode())
+          except Exception as e:
+              print(f"JSON decoding error: {e}")
+              sys.exit(1)
+
+          for item in decoded_json:
+              print("Deploying data source:")
+              for key, value in item.items():
+                  print(f"- {key}: {value}")
+          EOF
