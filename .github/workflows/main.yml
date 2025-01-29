@@ -1,0 +1,88 @@
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest  # Use GitHub-hosted runner or replace with your self-hosted runner
+    environment: dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests azure-identity azure-mgmt-purview azure-mgmt-resource azure-purview-catalog
+
+      - name: Set Dynamic Variables
+        run: |
+          echo "AZURE_TENANT_ID=${{ vars.AZURE_TENANT_ID }}" >> $GITHUB_ENV
+          echo "AZURE_CLIENT_ID=${{ vars.AZURE_CLIENT_ID }}" >> $GITHUB_ENV
+          echo "AZURE_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }}" >> $GITHUB_ENV
+
+      - name: Read Parameter File and Onboard New Data Sources
+        id: read_csv_python
+        run: |
+          python - <<EOF
+          import csv, os, json
+          from azure.identity import DefaultAzureCredential
+
+          client_id = os.getenv("AZURE_CLIENT_ID")
+          client_secret = os.getenv("AZURE_CLIENT_SECRET")
+          tenant_id = os.getenv("AZURE_TENANT_ID")
+
+          if not client_id or not client_secret or not tenant_id:
+              raise ValueError("Missing one or more required Azure credentials")
+
+          file_path = "PythonFolder/azure_cosmos_db_onboarding.csv"
+          if not os.path.exists(file_path):
+              raise FileNotFoundError(f"File not found: {file_path}")
+
+          with open(file_path, "r") as file:
+              reader = csv.DictReader(file)
+              data_rows = list(reader)
+
+          filtered_data = [row for row in data_rows if row["DatabaseName"] not in ["ExistingDB1", "ExistingDB2"]]
+
+          with open("task_data.json", "w") as f:
+              json.dump(filtered_data, f)
+
+          print(json.dumps(filtered_data))
+          EOF
+
+          echo "filtered_data=$(cat task_data.json)" >> $GITHUB_ENV
+
+    outputs:
+      filtered_data: ${{ env.filtered_data }}
+
+  processed-data:
+    needs: run-script
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Process filtered data
+        run: |
+          echo "Processing task data..."
+          task_data="${{ needs.run-script.outputs.filtered_data }}"
+
+          if [[ "$task_data" != "[]" ]]; then
+            echo "$task_data" | python - <<EOF
+            import sys, json
+            filtered_data = json.loads(sys.stdin.read())
+
+            for item in filtered_data:
+                print("Deploying data source:")
+                for key, value in item.items():
+                    print(f"- {key}: {value}")
+            EOF
+          else
+            echo "No tasks to process."
+          fi
