@@ -33,7 +33,7 @@ jobs:
           import csv, os, json
           from base64 import b64encode
 
-          file_path = "cosmos_collection_manager.csv"
+          file_path = "./cosmos_collection_manager.csv"
           if not os.path.exists(file_path):
               raise FileNotFoundError(f"File not found: {file_path}")
 
