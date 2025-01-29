@@ -4,11 +4,14 @@ on:
 
 jobs:
   run-script:
-    runs-on: ubuntu-latest  # Ensure the correct runner
+    runs-on: ubuntu-latest
     environment: dev
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Verify Files After Checkout
+        run: ls -R  # List files to confirm PythonFolder/azure_cosmos_db_onboarding.csv exists
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -20,11 +23,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests azure-identity azure-mgmt-purview azure-mgmt-resource azure-purview-catalog
 
-      - name: Set Dynamic Variables
+      - name: Create Sample CSV File (For Testing, If Missing)
         run: |
-          echo "AZURE_TENANT_ID=${{ vars.AZURE_TENANT_ID }}" >> $GITHUB_ENV
-          echo "AZURE_CLIENT_ID=${{ vars.AZURE_CLIENT_ID }}" >> $GITHUB_ENV
-          echo "AZURE_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }}" >> $GITHUB_ENV
+          if [ ! -f "PythonFolder/azure_cosmos_db_onboarding.csv" ]; then
+            mkdir -p PythonFolder
+            echo "id,DatasourceName,DatabaseName,Kind,Endpoint" > PythonFolder/azure_cosmos_db_onboarding.csv
+            echo "1,TestSource,testdb,AzureCosmosDB,https://example.com" >> PythonFolder/azure_cosmos_db_onboarding.csv
+          fi
 
       - name: Read Parameter File and Onboard New Data Sources
         id: read_csv_python
@@ -33,7 +38,7 @@ jobs:
           import csv, os, json
           from base64 import b64encode
 
-          file_path = "./cosmos_collection_manager.csv"
+          file_path = "PythonFolder/azure_cosmos_db_onboarding.csv"
           if not os.path.exists(file_path):
               raise FileNotFoundError(f"File not found: {file_path}")
 
@@ -41,17 +46,15 @@ jobs:
               reader = csv.DictReader(file)
               data_rows = list(reader)
 
-          # Simulating filtering of new data sources
           filtered_data = [row for row in data_rows if row["DatabaseName"] not in ["ExistingDB1", "ExistingDB2"]]
 
-          # Convert JSON to Base64 to safely pass between jobs
           json_data = json.dumps(filtered_data)
           b64_json = b64encode(json_data.encode()).decode()
 
           with open("task_data.json", "w") as f:
               f.write(b64_json)
 
-          print(b64_json)  # Print for debugging
+          print(b64_json)
           EOF
 
           echo "filtered_data=$(cat task_data.json)" >> $GITHUB_ENV
