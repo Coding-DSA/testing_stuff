@@ -11,7 +11,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Verify Files After Checkout
-        run: ls -R  # List files to confirm PythonFolder/azure_cosmos_db_onboarding.csv exists
+        run: ls -R  # Debugging: Ensure PythonFolder and CSV exist
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -36,7 +36,6 @@ jobs:
         run: |
           python - <<EOF
           import csv, os, json
-          from base64 import b64encode
 
           file_path = "PythonFolder/azure_cosmos_db_onboarding.csv"
           if not os.path.exists(file_path):
@@ -46,21 +45,21 @@ jobs:
               reader = csv.DictReader(file)
               data_rows = list(reader)
 
+          # Simulating filtering of new data sources
           filtered_data = [row for row in data_rows if row["DatabaseName"] not in ["ExistingDB1", "ExistingDB2"]]
 
-          json_data = json.dumps(filtered_data)
-          b64_json = b64encode(json_data.encode()).decode()
+          # Save filtered data to a JSON file
+          with open("filtered_data.json", "w") as f:
+              json.dump(filtered_data, f, indent=4)
 
-          with open("task_data.json", "w") as f:
-              f.write(b64_json)
-
-          print(b64_json)
+          print("Filtered Data Saved to filtered_data.json")
           EOF
 
-          echo "filtered_data=$(cat task_data.json)" >> $GITHUB_ENV
-
-    outputs:
-      filtered_data: ${{ env.filtered_data }}
+      - name: Upload Filtered Data as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: filtered-data
+          path: filtered_data.json
 
   processed-data:
     needs: run-script
@@ -69,30 +68,32 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Download Filtered Data Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: filtered-data
+
       - name: Process Filtered Data
         run: |
           echo "Processing task data..."
-          task_data="${{ needs.run-script.outputs.filtered_data }}"
-
-          if [[ -z "$task_data" ]]; then
-            echo "Error: No data received!"
+          
+          if [ ! -f "filtered_data.json" ]; then
+            echo "Error: Filtered data file not found!"
             exit 1
           fi
 
-          echo "$task_data" | python - <<EOF
+          cat filtered_data.json | python - <<EOF
           import sys, json
-          from base64 import b64decode
-
-          encoded_data = sys.stdin.read().strip()
-          if not encoded_data:
-              print("Error: Received empty data")
-              sys.exit(1)
 
           try:
-              decoded_json = json.loads(b64decode(encoded_data).decode())
+              decoded_json = json.load(sys.stdin)
           except Exception as e:
               print(f"JSON decoding error: {e}")
               sys.exit(1)
+
+          if not decoded_json:
+              print("No new data sources found.")
+              sys.exit(0)
 
           for item in decoded_json:
               print("Deploying data source:")
